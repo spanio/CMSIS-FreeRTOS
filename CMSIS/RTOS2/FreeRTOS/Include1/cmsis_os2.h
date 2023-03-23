@@ -679,6 +679,11 @@ uint32_t osMemoryPoolGetCount(osMemoryPoolId_t mp_id);
 /// \return number of memory blocks available.
 uint32_t osMemoryPoolGetSpace(osMemoryPoolId_t mp_id);
 
+/// Get the start address of a Memory Pool.
+/// \param[in]     mp_id         memory pool ID obtained by \ref osMemoryPoolNew.
+/// \return start address of memory pool.
+uint32_t osMemoryPoolGetStartAddress(osMemoryPoolId_t mp_id);
+
 /// Delete a Memory Pool object.
 /// \param[in]     mp_id         memory pool ID obtained by \ref osMemoryPoolNew.
 /// \return status code that indicates the execution status of the function.

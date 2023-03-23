@@ -2809,6 +2809,33 @@ uint32_t osMemoryPoolGetSpace (osMemoryPoolId_t mp_id) {
 }
 
 /*
+  Get the start address of a Memory Pool.
+*/
+uint32_t osMemoryPoolGetStartAddress (osMemoryPoolId_t mp_id) {
+  MemPool_t *mp;
+  uint32_t  start_addr;
+
+  if (mp_id == NULL) {
+    /* Invalid input parameters */
+    start_addr = 0U;
+  }
+  else {
+    mp = (MemPool_t *)mp_id;
+
+    if ((mp->status & MPOOL_STATUS) != MPOOL_STATUS) {
+      /* Invalid object status */
+      start_addr = 0U;
+    }
+    else {
+      start_addr = (uint32_t)mp->mem_arr;
+    }
+  }
+
+  /* Return the start address */
+  return (start_addr);
+}
+
+/*
   Delete a Memory Pool object.
 */
 osStatus_t osMemoryPoolDelete (osMemoryPoolId_t mp_id) {
