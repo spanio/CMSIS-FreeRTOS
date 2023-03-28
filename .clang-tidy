@@ -1,0 +1,8 @@
+---
+# Disable all checks in this folder which isn't a native option so cheat
+# https://stackoverflow.com/questions/58338202/cmake-clang-tidy-disable-checking-in-directory
+Checks: '-*,misc-definitions-in-headers'
+CheckOptions:
+    - { key: HeaderFileExtensions,          value: "x" }
+asdf;lkjasetf;lkjher
+...
