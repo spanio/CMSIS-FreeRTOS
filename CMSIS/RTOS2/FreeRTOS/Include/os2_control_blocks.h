@@ -17,6 +17,11 @@
 #define osTickRateHz (configTICK_RATE_HZ)
 #define osMaxDelayTicks (portMAX_DELAY)
 
+#ifndef configSPAN_SYS_TICK_RATE_HZ
+#error configSPAN_SYS_TICK_RATE_HZ must be defined to a literal integer
+#endif
+#define osSysTickRateHz (configSPAN_SYS_TICK_RATE_HZ)
+
 typedef MemPool_t MemoryPoolControlBlock;
 typedef StaticQueue_t MessageQueueControlBlock;
 
