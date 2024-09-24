@@ -1,9 +1,17 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 
-# User is responsible to set two mandatory options:
-# FREERTOS_CONFIG_FILE_DIRECTORY
-# FREERTOS_PORT
+function(generate_freertos_kernel
+SUFFIX
+FREERTOS_CONFIG_LIBRARY
+FREERTOS_PORT)
+# User is responsible to one mandatory option:
+#   FREERTOS_PORT, if not specified and native port detected, uses the native compile.
 #
+# User is responsible for one library target:
+#   ${FREERTOS_CONFIG_LIBRARY} ,typcially an INTERFACE library
+#
+# DEPRECATED: FREERTOS_CONFIG_FILE_DIRECTORY - but still supported if no ${FREERTOS_CONFIG_LIBRARY} defined for now.
+#             May be removed at some point in the future.
 # User can choose which heap implementation to use (either the implementations
 # included with FreeRTOS [1..5] or a custom implementation ) by providing the
 # option FREERTOS_HEAP. If the option is not set, the cmake will default to
@@ -12,17 +20,28 @@ cmake_minimum_required(VERSION 3.15)
 # Absolute path to FreeRTOS config file directory
 #set(FREERTOS_CONFIG_FILE_DIRECTORY "" CACHE STRING "Absolute path to the directory with FreeRTOSConfig.h")
 
-if(NOT FREERTOS_CONFIG_FILE_DIRECTORY)
-    message(FATAL_ERROR " FreeRTOSConfig.h file directory not specified. Please specify absolute path to it from top-level CMake file:\n"
-        "  set(FREERTOS_CONFIG_FILE_DIRECTORY <absolute path to FreeRTOSConfig.h directory> CACHE STRING \"\")\n"
-        " or from CMake command line option:\n"
-        "  -DFREERTOS_CONFIG_FILE_DIRECTORY='/absolute_path/to/FreeRTOSConfig.h/directory'")
-elseif(NOT EXISTS ${FREERTOS_CONFIG_FILE_DIRECTORY}/FreeRTOSConfig.h)
-    message(FATAL_ERROR " FreeRTOSConfig.h file not found in the directory specified (${FREERTOS_CONFIG_FILE_DIRECTORY})\n"
-        " Please specify absolute path to it from top-level CMake file:\n"
-        "  set(FREERTOS_CONFIG_FILE_DIRECTORY <absolute path to FreeRTOSConfig.h directory> CACHE STRING \"\")\n"
-        " or from CMake command line option:\n"
-        "  -DFREERTOS_CONFIG_FILE_DIRECTORY='/absolute_path/to/FreeRTOSConfig.h/directory'")
+# `${FREERTOS_CONFIG_LIBRARY}` target defines the path to FreeRTOSConfig.h and optionally other freertos based config files
+if(NOT TARGET ${FREERTOS_CONFIG_LIBRARY} )
+    if (NOT DEFINED FREERTOS_CONFIG_FILE_DIRECTORY )
+
+        message(FATAL_ERROR " freertos_config target not specified.  Please specify a cmake target that defines the include directory for FreeRTOSConfig.h:\n"
+            "  add_library(freertos_config INTERFACE)\n"
+            "  target_include_directories(freertos_config SYSTEM\n"
+            "    INTERFACE\n"
+            "      include) # The config file directory\n"
+            "  target_compile_definitions(freertos_config\n"
+            "    PUBLIC\n"
+            "    projCOVERAGE_TEST=0)\n")
+    else()
+        message(WARNING " Using deprecated 'FREERTOS_CONFIG_FILE_DIRECTORY' - please update your project CMakeLists.txt file:\n"
+            "  add_library(freertos_config INTERFACE)\n"
+            "  target_include_directories(freertos_config SYSTEM\n"
+            "    INTERFACE\n"
+            "      include) # The config file directory\n"
+            "  target_compile_definitions(freertos_config\n"
+            "    PUBLIC\n"
+            "    projCOVERAGE_TEST=0)\n")
+    endif()
 endif()
 
 # Heap number or absolute path to custom heap implementation provided by user
@@ -184,25 +203,29 @@ if(NOT FREERTOS_PORT)
         " WIZC_PIC18                       - Compiller: WizC          Target: PIC18")
 endif()
 
-add_subdirectory(portable)
+add_subdirectory(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/include ${CMAKE_CURRENT_BINARY_DIR}/${SUFFIX}/FreeRtosInclude)
+add_subdirectory(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/portable ${CMAKE_CURRENT_BINARY_DIR}/${SUFFIX}/FreeRtosPort)
 
-add_library(freertos_kernel STATIC
-    croutine.c
-    event_groups.c
-    list.c
-    queue.c
-    stream_buffer.c
-    tasks.c
-    timers.c
+add_library(freertos_kernel-${SUFFIX} INTERFACE)
+
+target_sources(freertos_kernel-${SUFFIX} INTERFACE
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/croutine.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/event_groups.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/list.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/queue.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/stream_buffer.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/tasks.c
+    ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/timers.c
 
     # If FREERTOS_HEAP is digit between 1 .. 5 - it is heap number, otherwise - it is path to custom heap source file
     $<IF:$<BOOL:$<FILTER:${FREERTOS_HEAP},EXCLUDE,^[1-5]$>>,${FREERTOS_HEAP},portable/MemMang/heap_${FREERTOS_HEAP}.c>
 )
 
-target_include_directories(freertos_kernel
-    PUBLIC
-        include
-        ${FREERTOS_CONFIG_FILE_DIRECTORY}
-)
+generate_freertos_kernel_include(${SUFFIX} ${FREERTOS_CONFIG_LIBRARY})
+generate_freertos_kernel_port(${SUFFIX} ${FREERTOS_PORT} freertos_kernel-${SUFFIX})
 
-target_link_libraries(freertos_kernel freertos_kernel_port)
+target_link_libraries(freertos_kernel-${SUFFIX} INTERFACE freertos_kernel_port-${SUFFIX} freertos_kernel_include-${SUFFIX})
+
+add_library(ThirdParty::FreeRTOS::Kernel::${SUFFIX} ALIAS freertos_kernel-${SUFFIX})
+
+endfunction()

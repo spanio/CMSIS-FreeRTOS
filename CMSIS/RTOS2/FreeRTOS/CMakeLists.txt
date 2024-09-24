@@ -1,12 +1,26 @@
 # defines library FW3_CMSIS_TARGET
 
-add_library(FW3_CMSIS_TARGET)
-target_sources(
-  FW3_CMSIS_TARGET
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/Source/cmsis_os2.c
-          ${CMAKE_CURRENT_SOURCE_DIR}/Source/freertos_evr.c
-          ${CMAKE_CURRENT_SOURCE_DIR}/Source/os_systick.c
-          ${CMAKE_CURRENT_SOURCE_DIR}/Source/ARM/clib_arm.c)
+function(generate_freertos_cmsis
+SUFFIX)
 
-set_source_files_properties(${FW3_CMSIS_DIR}/Source/cmsis_os1.c
+add_library(CMSIS_RTOS2_FreeRTOS-${SUFFIX} INTERFACE)
+
+add_library(ThirdParty::ARM::RTOS2::FreeRTOS::${SUFFIX} ALIAS CMSIS_RTOS2_FreeRTOS-${SUFFIX})
+
+target_sources(
+  CMSIS_RTOS2_FreeRTOS-${SUFFIX}
+  INTERFACE ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/cmsis_os2.c
+          ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/freertos_evr.c
+          ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/os_systick.c
+          ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/ARM/clib_arm.c
+          ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/cmsis_os1.c)
+
+target_include_directories(CMSIS_RTOS2_FreeRTOS-${SUFFIX} INTERFACE
+  ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Include
+  ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Include1
+)  
+
+set_source_files_properties(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source/cmsis_os1.c
                             PROPERTIES COMPILE_OPTIONS -Wno-switch-enum)
+
+endfunction()
