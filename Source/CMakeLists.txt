@@ -8,7 +8,7 @@ FREERTOS_PORT)
 #   FREERTOS_PORT, if not specified and native port detected, uses the native compile.
 #
 # User is responsible for one library target:
-#   ${FREERTOS_CONFIG_LIBRARY} ,typcially an INTERFACE library
+#   ${FREERTOS_CONFIG_LIBRARY}, typically an INTERFACE library
 #
 # DEPRECATED: FREERTOS_CONFIG_FILE_DIRECTORY - but still supported if no ${FREERTOS_CONFIG_LIBRARY} defined for now.
 #             May be removed at some point in the future.

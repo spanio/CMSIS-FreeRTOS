@@ -15,5 +15,3 @@ function(generate_freertos_libs
 target_link_libraries(CMSIS_RTOS2_FreeRTOS-${SUFFIX} INTERFACE freertos_kernel-${SUFFIX})
   
 endfunction()
-
-
