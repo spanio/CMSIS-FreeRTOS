@@ -120,7 +120,7 @@ static osKernelState_t KernelState = osKernelInactive;
     HeapRegion_t array.
   */
   #define HEAP_5_REGION_SETUP   1
-  
+
   #ifndef configHEAP_5_REGIONS
     #define configHEAP_5_REGIONS xHeapRegions
 
@@ -1314,12 +1314,19 @@ const char *osTimerGetName (osTimerId_t timer_id) {
 osStatus_t osTimerStart (osTimerId_t timer_id, uint32_t ticks) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   osStatus_t stat;
+  BaseType_t yield;
 
-  if (IRQ_Context() != 0U) {
-    stat = osErrorISR;
-  }
-  else if ((hTimer == NULL) || (ticks == 0U)) {
+  if ((hTimer == NULL) || (ticks == 0U)) {
     stat = osErrorParameter;
+  }
+  else if (IRQ_Context() != 0U) {
+    yield = pdFALSE;
+    if (xTimerChangePeriodFromISR (hTimer, ticks, &yield) == pdPASS) {
+      stat = osOK;
+      portYIELD_FROM_ISR (yield);
+    } else {
+      stat = osErrorResource;
+    }
   }
   else {
     if (xTimerChangePeriod (hTimer, ticks, 0) == pdPASS) {
@@ -1339,12 +1346,24 @@ osStatus_t osTimerStart (osTimerId_t timer_id, uint32_t ticks) {
 osStatus_t osTimerStop (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   osStatus_t stat;
+  BaseType_t yield;
 
-  if (IRQ_Context() != 0U) {
-    stat = osErrorISR;
-  }
-  else if (hTimer == NULL) {
+  if (hTimer == NULL) {
     stat = osErrorParameter;
+  }
+  else if (IRQ_Context() != 0U) {
+    yield = pdFALSE;
+    if (xTimerIsTimerActive (hTimer) == pdFALSE) {
+      stat = osErrorResource;
+    }
+    else {
+      if (xTimerStopFromISR (hTimer, &yield) == pdPASS) {
+        stat = osOK;
+        portYIELD_FROM_ISR (yield);
+      } else {
+        stat = osErrorResource;
+      }
+    }
   }
   else {
     if (xTimerIsTimerActive (hTimer) == pdFALSE) {
@@ -1370,7 +1389,7 @@ uint32_t osTimerIsRunning (osTimerId_t timer_id) {
   TimerHandle_t hTimer = (TimerHandle_t)timer_id;
   uint32_t running;
 
-  if ((IRQ_Context() != 0U) || (hTimer == NULL)) {
+  if (hTimer == NULL) {
     running = 0U;
   } else {
     running = (uint32_t)xTimerIsTimerActive (hTimer);
@@ -1970,7 +1989,7 @@ osSemaphoreId_t osSemaphoreNew (uint32_t max_count, uint32_t initial_count, cons
           #endif
         }
       }
-      
+
       #if (configQUEUE_REGISTRY_SIZE > 0)
       if (hSemaphore != NULL) {
         if ((attr != NULL) && (attr->name != NULL)) {
