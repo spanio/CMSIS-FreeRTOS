@@ -5,10 +5,6 @@ function(generate_freertos_libs
   FREERTOS_CONFIG_LIBRARY
   FREERTOS_PORT)
 
-  add_compile_options(
-  -Os
-  )
-
   add_subdirectory(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/Source ${CMAKE_CURRENT_BINARY_DIR}/${SUFFIX}/FreeRtosSource)
   add_subdirectory(${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CMSIS/RTOS2/FreeRTOS
   ${CMAKE_CURRENT_BINARY_DIR}/${SUFFIX}/FreeRtosCmsis)
