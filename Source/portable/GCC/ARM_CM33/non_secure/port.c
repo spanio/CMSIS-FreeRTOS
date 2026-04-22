@@ -691,6 +691,18 @@ static void prvTaskExitError( void )
         /* Check that the MPU is present. */
         if( portMPU_TYPE_REG == portEXPECTED_MPU_TYPE_VALUE )
         {
+            /* Disable MPU while reconfiguring all 8 regions. */
+            portMPU_CTRL_REG &= ~portMPU_ENABLE_BIT;
+
+            /* Clear regions 4-7 to remove any TF-M configuration that would
+             * override FreeRTOS regions (higher region number = higher priority
+             * in ARMv8-M; TF-M may have left the NS MPU enabled with unknown
+             * region contents in regions 4-7). */
+            portMPU_RNR_REG = 4; portMPU_RBAR_REG = 0; portMPU_RLAR_REG = 0;
+            portMPU_RNR_REG = 5; portMPU_RBAR_REG = 0; portMPU_RLAR_REG = 0;
+            portMPU_RNR_REG = 6; portMPU_RBAR_REG = 0; portMPU_RLAR_REG = 0;
+            portMPU_RNR_REG = 7; portMPU_RBAR_REG = 0; portMPU_RLAR_REG = 0;
+
             /* MAIR0 - Index 0. */
             portMPU_MAIR0_REG |= ( ( portMPU_NORMAL_MEMORY_BUFFERABLE_CACHEABLE << portMPU_MAIR_ATTR0_POS ) & portMPU_MAIR_ATTR0_MASK );
             /* MAIR0 - Index 1. */

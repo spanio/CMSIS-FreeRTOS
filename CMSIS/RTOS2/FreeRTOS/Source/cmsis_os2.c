@@ -566,6 +566,12 @@ osThreadId_t osThreadNew (osThreadFunc_t func, void *argument, const osThreadAtt
         return (NULL);
       }
 
+      #if (configENABLE_MPU == 1)
+        if ((attr->attr_bits & osThreadPrivileged) == osThreadPrivileged) {
+          prio |= portPRIVILEGE_BIT;
+        }
+      #endif
+
       if (attr->stack_size > 0U) {
         /* In FreeRTOS stack is not in bytes, but in sizeof(StackType_t) which is 4 on ARM ports.       */
         /* Stack size should be therefore 4 byte aligned in order to avoid division caused side effects */
