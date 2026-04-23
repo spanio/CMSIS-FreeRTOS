@@ -184,8 +184,10 @@ typedef enum {
 #define osFlagsErrorISR 0xFFFFFFFAU        ///< osErrorISR (-6).
 
 // Thread attributes (attr_bits in \ref osThreadAttr_t).
-#define osThreadDetached 0x00000000U  ///< Thread created in detached mode (default)
-#define osThreadJoinable 0x00000001U  ///< Thread created in joinable mode
+#define osThreadDetached    0x00000000U  ///< Thread created in detached mode (default)
+#define osThreadJoinable    0x00000001U  ///< Thread created in joinable mode
+#define osThreadUnprivileged 0x00000008U  ///< Thread runs in unprivileged mode (requires configENABLE_MPU=1)
+#define osThreadPrivileged  0x00000004U  ///< Thread runs in privileged mode (requires configENABLE_MPU=1)
 
 // Mutex attributes (attr_bits in \ref osMutexAttr_t).
 #define osMutexRecursive 0x00000001U    ///< Recursive mutex.
