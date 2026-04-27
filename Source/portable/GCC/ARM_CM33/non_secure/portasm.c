@@ -89,7 +89,6 @@ void vRestoreContextOfFirstTask( void ) /* __attribute__ (( naked )) PRIVILEGED_
             "	orr r4, #1									\n"/* r4 = r4 | 1 i.e. Set the bit 0 in r4. */
             "	str r4, [r2]								\n"/* Enable MPU. */
             "	dsb											\n"/* Force memory writes before continuing. */
-            "	isb											\n"/* Instruction barrier to ensure new MPU settings take effect. */
         #endif /* configENABLE_MPU */
         "													\n"
         #if ( configENABLE_MPU == 1 )
@@ -358,7 +357,6 @@ void PendSV_Handler( void ) /* __attribute__ (( naked )) PRIVILEGED_FUNCTION */
             "	orr r4, #1									\n"/* r4 = r4 | 1 i.e. Set the bit 0 in r4. */
             "	str r4, [r3]								\n"/* Enable MPU. */
             "	dsb											\n"/* Force memory writes before continuing. */
-            "	isb											\n"/* Instruction barrier to ensure new MPU settings take effect. */
         #endif /* configENABLE_MPU */
         "													\n"
         #if ( configENABLE_MPU == 1 )

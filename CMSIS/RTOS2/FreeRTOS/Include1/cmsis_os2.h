@@ -186,6 +186,20 @@ typedef enum {
 // Thread attributes (attr_bits in \ref osThreadAttr_t).
 #define osThreadDetached    0x00000000U  ///< Thread created in detached mode (default)
 #define osThreadJoinable    0x00000001U  ///< Thread created in joinable mode
+/* PATCH REQUIRED — osThreadPrivileged and osThreadUnprivileged are not
+ * present in CMSIS-RTOS2 API v2.1.3, which is the version shipped in this
+ * ST vendor copy. These defines must be added manually.
+ *
+ * If cmsis_os2.h is regenerated or the middleware package is upgraded,
+ * verify that these values are present. If they are absent, re-add them.
+ * If they are present with different values, the cmsis_os2.c patch
+ * must be re-verified against the new implementation.
+ *
+ * WARNING: Removing these defines causes any osThreadNew() call that passes
+ * osThreadPrivileged in attr_bits to compile without error but silently
+ * create an unprivileged task. There is no runtime assert or fault at task
+ * creation time — the failure only manifests when the task attempts a
+ * privileged operation and triggers a MemManage fault. */
 #define osThreadUnprivileged 0x00000008U  ///< Thread runs in unprivileged mode (requires configENABLE_MPU=1)
 #define osThreadPrivileged  0x00000004U  ///< Thread runs in privileged mode (requires configENABLE_MPU=1)
 
