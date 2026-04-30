@@ -200,7 +200,7 @@ typedef enum {
  * create an unprivileged task. There is no runtime assert or fault at task
  * creation time — the failure only manifests when the task attempts a
  * privileged operation and triggers a MemManage fault. */
-#define osThreadUnprivileged 0x00000008U  ///< Thread runs in unprivileged mode (requires configENABLE_MPU=1)
+#define osThreadUnprivileged 0x00000002U  ///< Thread runs in unprivileged mode (requires configENABLE_MPU=1)
 #define osThreadPrivileged  0x00000004U  ///< Thread runs in privileged mode (requires configENABLE_MPU=1)
 
 // Mutex attributes (attr_bits in \ref osMutexAttr_t).
