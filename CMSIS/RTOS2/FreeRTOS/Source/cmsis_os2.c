@@ -566,6 +566,33 @@ osThreadId_t osThreadNew (osThreadFunc_t func, void *argument, const osThreadAtt
         return (NULL);
       }
 
+      /* PATCH REQUIRED — this code path does not exist in CMSIS-RTOS2 v2.1.x.
+        The wrapper at this version never reads attr->attr_bits for privilege
+        control and never applies portPRIVILEGE_BIT to the FreeRTOS priority.
+        
+        If cmsis_os2.c is regenerated or the middleware package is upgraded,
+        this block must be re-applied at the same location. The correct insertion
+        point is after prio is derived from attr->priority and before any
+        xTaskCreate / xTaskCreateStatic / xTaskCreateRestricted call.
+        
+        WARNING: Removing this block causes all osThreadNew() calls that pass
+        osThreadPrivileged in attr_bits to silently run unprivileged. There is
+        no compile error and no runtime assert at task creation time. The failure
+        only appears as a MemManage fault when the task later attempts a
+        privileged memory access — with no obvious link to the missing bit.
+        This is especially critical on TrustZone targets (e.g. STM32H5) where
+        NS-side privilege separation is a security boundary, not just a
+        robustness feature. */
+      #if (configENABLE_MPU == 1)
+        /* Default to privileged; only drop to unprivileged if osThreadUnprivileged
+           is explicitly requested. This matches our architecture where all internal
+           service threads are privileged and unprivileged tasks are created directly
+           via xTaskCreateRestrictedStatic. */
+        if ((attr->attr_bits & osThreadUnprivileged) != osThreadUnprivileged) {
+          prio |= portPRIVILEGE_BIT;
+        }
+      #endif
+
       if (attr->stack_size > 0U) {
         /* In FreeRTOS stack is not in bytes, but in sizeof(StackType_t) which is 4 on ARM ports.       */
         /* Stack size should be therefore 4 byte aligned in order to avoid division caused side effects */
