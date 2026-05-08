@@ -584,11 +584,10 @@ osThreadId_t osThreadNew (osThreadFunc_t func, void *argument, const osThreadAtt
         NS-side privilege separation is a security boundary, not just a
         robustness feature. */
       #if (configENABLE_MPU == 1)
-        /* Default to privileged; only drop to unprivileged if osThreadUnprivileged
-           is explicitly requested. This matches our architecture where all internal
-           service threads are privileged and unprivileged tasks are created directly
-           via xTaskCreateRestrictedStatic. */
-        if ((attr->attr_bits & osThreadUnprivileged) != osThreadUnprivileged) {
+        /* Opt-in privilege: only set portPRIVILEGE_BIT if osThreadPrivileged is
+           explicitly requested. Threads created without osThreadPrivileged run
+           unprivileged, which is the correct default when configENABLE_MPU=1. */
+        if ((attr->attr_bits & osThreadPrivileged) == osThreadPrivileged) {
           prio |= portPRIVILEGE_BIT;
         }
       #endif
