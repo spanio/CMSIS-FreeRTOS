@@ -159,6 +159,7 @@ void vRaisePrivilege( void ) /* __attribute__ (( naked )) PRIVILEGED_FUNCTION */
         "	mrs r0, control									\n"/* Read the CONTROL register. */
         "	bic r0, #1										\n"/* Clear the bit 0. */
         "	msr control, r0									\n"/* Write back the new CONTROL value. */
+        "	isb												\n"
         "	bx lr											\n"/* Return to the caller. */
         ::: "r0", "memory"
     );
@@ -174,6 +175,7 @@ void vResetPrivilege( void ) /* __attribute__ (( naked )) */
         "	mrs r0, control									\n"/* r0 = CONTROL. */
         "	orr r0, #1										\n"/* r0 = r0 | 1. */
         "	msr control, r0									\n"/* CONTROL = r0. */
+        "	isb												\n"
         "	bx lr											\n"/* Return to the caller. */
         ::: "r0", "memory"
     );
