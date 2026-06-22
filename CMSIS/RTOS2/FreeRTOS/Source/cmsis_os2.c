@@ -101,6 +101,33 @@ typedef struct {
 /* Kernel initialization state */
 static osKernelState_t KernelState = osKernelInactive;
 
+#if (configENABLE_MPU == 1)
+/* PATCH REQUIRED -- G3P-22238 zone-based MPU partitioning.
+   This code path does not exist in stock CMSIS-RTOS2 v2.1.x.
+   The wrapper at this version never reads osThreadZone() bits from
+   attr->attr_bits and never routes static-allocation tasks through
+   xTaskCreateRestrictedStatic.
+
+   If cmsis_os2.c is regenerated or the middleware package is upgraded,
+   this block (and the matching code path inside osThreadNew()) must be
+   re-applied.
+
+   ZoneGetTaskRegions() is provided by the application's zones.c (e.g.
+   span-products/gen3-panel/branch/bsp/Branch/NonSecure/Core/Src/zones.c).
+   Returns a pointer to portNUM_CONFIGURABLE_REGIONS consecutive
+   ARM_MPU_Region_t entries (RBAR/RLAR pairs), or NULL if the zone ID
+   is out of range. The shim treats each entry as { uint32_t RBAR; uint32_t RLAR; }
+   to avoid pulling CMSIS Core MPU headers into this file.
+
+   WARNING: Removing this block silently drops MPU isolation for any
+   task created with osThreadZone() in its attr_bits. There is no
+   compile error and no runtime assert at task creation. The failure
+   surfaces only as an MPU violation that doesn't happen when it
+   should -- the opposite of the privilege patch above, but equally
+   security-critical on TrustZone targets. */
+extern const void *ZoneGetTaskRegions(uint32_t zone);
+#endif
+
 /*
   Heap region definition used by heap_5 variant
 
@@ -616,8 +643,70 @@ osThreadId_t osThreadNew (osThreadFunc_t func, void *argument, const osThreadAtt
 
     if (mem == 1) {
       #if (configSUPPORT_STATIC_ALLOCATION == 1)
-        hTask = xTaskCreateStatic ((TaskFunction_t)func, name, stack, argument, prio, (StackType_t  *)attr->stack_mem,
-                                                                                      (StaticTask_t *)attr->cb_mem);
+        #if (configENABLE_MPU == 1)
+          /* PATCH (G3P-22238): if osThreadZone() valid bit is set in attr_bits,
+             route through xTaskCreateRestrictedStatic with xRegions[] populated
+             from the application's zone table. See zones.h / zones.c. */
+          if ((attr->attr_bits & osThreadZone_Valid) != 0U) {
+            uint32_t zone_id = (attr->attr_bits & osThreadZone_Msk) >> osThreadZone_Pos;
+            /* ZoneGetTaskRegions returns a pointer to portNUM_CONFIGURABLE_REGIONS
+               consecutive RBAR/RLAR pairs (ARM_MPU_Region_t layout). Treat each
+               as a uint32_t[2] to avoid pulling CMSIS Core MPU headers here. */
+            const uint32_t (*zone_regions)[2] =
+                (const uint32_t (*)[2])ZoneGetTaskRegions(zone_id);
+
+            /* pxTaskBuffer is `StaticTask_t * const` in TaskParameters_t (see task.h),
+               so it must be set via initializer rather than post-declaration assignment. */
+            TaskParameters_t task_params = {
+              .pvTaskCode     = (TaskFunction_t)func,
+              .pcName         = name,
+              .usStackDepth   = (configSTACK_DEPTH_TYPE)stack,
+              .pvParameters   = argument,
+              .uxPriority     = prio,
+              .puxStackBuffer = (StackType_t *)attr->stack_mem,
+              .pxTaskBuffer   = (StaticTask_t *)attr->cb_mem,
+              /* .xRegions populated below */
+            };
+
+            for (uint32_t i = 0U; i < portNUM_CONFIGURABLE_REGIONS; i++) {
+              if (zone_regions != NULL) {
+                uint32_t rbar = zone_regions[i][0];
+                uint32_t rlar = zone_regions[i][1];
+                if ((rlar & 0x1UL) != 0UL) {
+                  /* RLAR.EN set: a configured region. Decode RBAR/RLAR into
+                     FreeRTOS MemoryRegion_t (base/length/parameter flags). */
+                  uint32_t base  = rbar & 0xFFFFFFE0UL;
+                  uint32_t limit = rlar & 0xFFFFFFE0UL;
+                  uint32_t fr_params = 0U;
+                  /* RBAR bit 2 set => AP[1]=1 => Read-only. */
+                  if ((rbar & 0x4UL) != 0UL) { fr_params |= tskMPU_REGION_READ_ONLY; }
+                  /* RBAR bit 0 = XN. */
+                  if ((rbar & 0x1UL) != 0UL) { fr_params |= tskMPU_REGION_EXECUTE_NEVER; }
+                  /* RLAR bits 3:1 = ATTR_INDEX. Slot 1 = Device memory per
+                     FreeRTOS port convention (see vPortStoreTaskMPUSettings). */
+                  if (((rlar >> 1) & 0x7UL) == 0x1UL) { fr_params |= tskMPU_REGION_DEVICE_MEMORY; }
+
+                  task_params.xRegions[i].pvBaseAddress  = (void *)base;
+                  task_params.xRegions[i].ulLengthInBytes = (limit - base) + 32U;
+                  task_params.xRegions[i].ulParameters    = fr_params;
+                  continue;
+                }
+              }
+              /* Either zone is invalid or row has RLAR.EN clear -- invalidate. */
+              task_params.xRegions[i].pvBaseAddress   = NULL;
+              task_params.xRegions[i].ulLengthInBytes = 0U;
+              task_params.xRegions[i].ulParameters    = 0U;
+            }
+
+            if (xTaskCreateRestrictedStatic(&task_params, &hTask) != pdPASS) {
+              hTask = NULL;
+            }
+          } else
+        #endif
+          {
+            hTask = xTaskCreateStatic ((TaskFunction_t)func, name, stack, argument, prio, (StackType_t  *)attr->stack_mem,
+                                                                                          (StaticTask_t *)attr->cb_mem);
+          }
       #endif
     }
     else {
